@@ -5,6 +5,17 @@ from app.models import user
 from app.dependencies import auth
 from app.core import enums
 
+def allow_active_staff(
+    user : user.Users = Depends(auth.get_authorized_user),
+    db: Session = Depends(get_db)
+):
+    if user.role != enums.EmploymentStatus.ACTIVE:
+        raise HTTPException(
+            status_code=403,
+            detail="Staff access required"
+        )
+    return user
+
 def require_admin(
     user : user.Users = Depends(auth.get_authorized_user),
     db: Session = Depends(get_db)

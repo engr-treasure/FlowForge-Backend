@@ -17,7 +17,8 @@ router = APIRouter(
 def register(
     user: user.Register,
     db: Session = Depends(get_db),
-    _: Users = Depends(permissions.require_admin)
+    _: Users = Depends(permissions.require_admin),
+    __: Users = Depends(permissions.allow_active_staff)
 ):
     if user.email:
         user_exists = db.query(Users).filter_by(email=user.email).first()
@@ -102,7 +103,8 @@ def login(
 @router.get("/", response_model=list[user.UserResponse])
 def get_users(
     db: Session = Depends(get_db),
-    allowed_user: Users = Depends(permissions.require_admin_or_manager)
+    allowed_user: Users = Depends(permissions.require_admin_or_manager),
+    __: Users = Depends(permissions.allow_active_staff)
 ):
     if allowed_user.role == enums.Roles.ADMIN:
         users = db.query(Users).all()
@@ -114,14 +116,16 @@ def get_users(
 
 @router.get("/profile", response_model=user.UserResponse)
 def profile(
-    user: Users = Depends(auth.get_authorized_user)
+    user: Users = Depends(auth.get_authorized_user),
+    __: Users = Depends(permissions.allow_active_staff)
 ):
     return user
 
 @router.get("/{staff_id}", response_model=user.UserResponse)
 def get_user(
     staff: Users = Depends(user_dependencies.get_user_by_staff_id),
-    _: Users = Depends(permissions.require_admin_or_manager)
+    _: Users = Depends(permissions.require_admin_or_manager),
+    __: Users = Depends(permissions.allow_active_staff)
 ):
     return staff
 
@@ -130,7 +134,8 @@ def update_user(
     update_details: user.UpdateUser,
     verified_staff: Users = Depends(user_dependencies.get_user_by_staff_id),
     db: Session = Depends(get_db),
-    _: Users = Depends(permissions.require_admin)
+    _: Users = Depends(permissions.require_admin),
+    __: Users = Depends(permissions.allow_active_staff)
 ):
     update_user = update_details.model_dump(exclude_unset=True)
     for key, value in update_user.items():

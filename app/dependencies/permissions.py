@@ -1,0 +1,29 @@
+from fastapi import Depends, HTTPException
+from app.databases.database import get_db
+from sqlalchemy.orm import Session
+from app.models import user
+from app.dependencies import auth
+from app.core import enums
+
+def require_admin(
+    user : user.Users = Depends(auth.get_authorized_user),
+    db: Session = Depends(get_db)
+):
+    if user.role != enums.Roles.ADMIN:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required"
+        )
+    return user
+
+def require_admin_or_manager(
+    user : user.Users = Depends(auth.get_authorized_user),
+    db: Session = Depends(get_db)
+):
+    if user.role != enums.Roles.ADMIN and user.role != enums.Roles.MANAGER:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin or Manager access required"
+        )
+    return user
+    

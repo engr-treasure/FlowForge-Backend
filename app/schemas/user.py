@@ -16,7 +16,9 @@ class Register(BaseModel):
     )
     email: str | None = None
     phone_number: str
-    street_address: str
+    street_address: str = Field(
+        max_length=200
+    )
     city: str
     state: str
     country: str
@@ -26,7 +28,10 @@ class Register(BaseModel):
     employment_status: enums.EmploymentStatus
     password: str
     repeat_password: str
-    join_date: date = Field(default_factory=date.today)
+    join_date: date = Field(
+        default_factory=date.today,
+        description="Date the staff member joined the company"
+    )
 
     @field_validator("first_name")
     @classmethod

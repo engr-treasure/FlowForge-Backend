@@ -3,7 +3,7 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from app.databases.database import Base
 from app.core import enums
-from datetime import date
+from datetime import date, timezone
 
 
 class Users (Base):
@@ -29,6 +29,6 @@ class Users (Base):
     )
     employment_status = Column(SQLEnum(enums.EmploymentStatus), nullable=False)
     password_hash = Column(String, nullable=False)
-    last_login = Column(DateTime)
+    last_login = Column(DateTime(timezone=True), nullable=True)
     join_date = Column(Date, nullable=False, default=date.today)
 

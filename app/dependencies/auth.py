@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.models import user
 
 auth2_scheme = security.OAuth2PasswordBearer(tokenUrl="users/login")
-def get_authorized_user(
+def get_authenticated_user(
     token: str = Depends(auth2_scheme),
     db: Session = Depends(get_db)
 ):

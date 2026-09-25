@@ -6,7 +6,7 @@ from app.dependencies import auth
 from app.core import enums
 
 def allow_active_staff(
-    user : user.Users = Depends(auth.get_authorized_user),
+    user : user.Users = Depends(auth.get_authenticated_user),
     db: Session = Depends(get_db)
 ):
     if user.role != enums.EmploymentStatus.ACTIVE:
@@ -17,7 +17,7 @@ def allow_active_staff(
     return user
 
 def require_admin(
-    user : user.Users = Depends(auth.get_authorized_user),
+    user : user.Users = Depends(auth.get_authenticated_user),
     db: Session = Depends(get_db)
 ):
     if user.role != enums.Roles.ADMIN:

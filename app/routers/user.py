@@ -8,6 +8,7 @@ from app.models.company import Departments, Jobs
 from app.core.security import encrypt_password, verify_password, create_access_token
 from app.dependencies import user_dependencies
 from app.core import enums
+from datetime import datetime, timezone
 router = APIRouter(
     prefix="/users",
     tags=["user"]
@@ -91,6 +92,10 @@ def login(
             status_code=401,
             detail="Invalid Email or Password"
         )
+    
+    db_user.last_login = datetime.now(timezone.utc)
+    db.commit()
+    
     access_token = create_access_token(
         data={"sub": str(db_user.id)}
     )
@@ -109,14 +114,14 @@ def get_users(
     if allowed_user.role == enums.Roles.ADMIN:
         users = db.query(Users).all()
     else:
-        users = db.query(Users).join(Users.job).join(Jobs.department).filter(Departments.id==allowed_user.job.department.id).all()
+        users = db.query(Users).join(Users.job).join(Jobs.department).filter(Departments.id==allowed_user.job.department_id).all()
         # We use join() when constructing a database query that needs information from related tables. 
         # allowed_user is already a SQLAlchemy Users instance, so we can navigate its relationships directly.
     return users
 
 @router.get("/profile", response_model=user.UserResponse)
 def profile(
-    user: Users = Depends(auth.get_authorized_user),
+    user: Users = Depends(auth.get_authenticated_user),
     __: Users = Depends(permissions.allow_active_staff)
 ):
     return user
@@ -145,4 +150,13 @@ def update_user(
     db.refresh(update_user)
     return update_user
 
-    
+@router.delete("/{staff_id}", response_model=user.UserResponse)
+def get_user(
+    staff: Users = Depends(user_dependencies.get_user_by_staff_id),
+    db: Session = Depends(get_db),
+    _: Users = Depends(permissions.require_admin),
+    __: Users = Depends(permissions.allow_active_staff)
+):
+    db.delete(staff)
+    db.commit()
+    return staff

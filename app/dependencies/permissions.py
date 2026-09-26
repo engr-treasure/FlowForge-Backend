@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException
-from app.databases.database import get_db
 from sqlalchemy.orm import Session
+from app.databases.database import get_db
 from app.models import user
 from app.dependencies import auth
 from app.core import enums
@@ -28,7 +28,7 @@ def require_admin(
     return user
 
 def require_admin_or_manager(
-    user : user.Users = Depends(auth.get_authorized_user),
+    user : user.Users = Depends(auth.get_authenticated_user),
     db: Session = Depends(get_db)
 ):
     if user.role != enums.Roles.ADMIN and user.role != enums.Roles.MANAGER:

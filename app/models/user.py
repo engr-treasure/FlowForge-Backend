@@ -1,9 +1,9 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Text, Date
+from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Date
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
+from datetime import date, timezone
 from app.databases.database import Base
 from app.core import enums
-from datetime import date, timezone
 
 
 class Users (Base):
@@ -22,7 +22,7 @@ class Users (Base):
     city = Column(String, nullable=False)
     state = Column(String, nullable=False)
     country = Column(String, nullable=False)
-    job_id = Column(ForeignKey("jobs.id"), nullable=False)
+    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
     job = relationship(
         "Jobs",
         back_populates="staff"
@@ -31,4 +31,8 @@ class Users (Base):
     password_hash = Column(String, nullable=False)
     last_login = Column(DateTime(timezone=True), nullable=True)
     join_date = Column(Date, nullable=False, default=date.today)
+    booking = relationship(
+        "Bookings",
+        back_populates="staff"
+    )
 

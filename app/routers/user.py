@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 from app.dependencies import auth, permissions
 from app.databases.database import get_db
-from sqlalchemy.orm import Session
 from app.schemas import user
 from app.models.user import Users
 from app.models.company import Departments, Jobs
@@ -9,6 +9,8 @@ from app.core.security import encrypt_password, verify_password, create_access_t
 from app.dependencies import user_dependencies
 from app.core import enums
 from datetime import datetime, timezone
+import math
+
 router = APIRouter(
     prefix="/users",
     tags=["user"]
@@ -105,16 +107,21 @@ def login(
         "token_type": "bearer"
     }
 
-@router.get("/", response_model=list[user.UserResponse])
+@router.get("/", response_model=user.UserListResponse)
 def get_users(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     allowed_user: Users = Depends(permissions.require_admin_or_manager),
     __: Users = Depends(permissions.allow_active_staff)
 ):
+    total = db.query(Users).count()
+    pages = math.ceil(total / limit)
+    offset = (page - 1) * limit
     if allowed_user.role == enums.Roles.ADMIN:
-        users = db.query(Users).all()
+        users = db.query(Users).order_by(Users.join_date.desc()).offset(offset).limit(limit).all()
     else:
-        users = db.query(Users).join(Users.job).join(Jobs.department).filter(Departments.id==allowed_user.job.department_id).all()
+        users = db.query(Users).order_by(Users.join_date.desc()).join(Users.job).join(Jobs.department).filter(Departments.id==allowed_user.job.department_id).offset(offset).limit(limit).all()
         # We use join() when constructing a database query that needs information from related tables. 
         # allowed_user is already a SQLAlchemy Users instance, so we can navigate its relationships directly.
     return users
@@ -142,13 +149,13 @@ def update_user(
     _: Users = Depends(permissions.require_admin),
     __: Users = Depends(permissions.allow_active_staff)
 ):
-    update_user = update_details.model_dump(exclude_unset=True)
-    for key, value in update_user.items():
+    updated = update_details.model_dump(exclude_unset=True, exclude={"equipment_ids"})
+    for key, value in updated.items():
         setattr(verified_staff, key, value)
 
     db.commit()
-    db.refresh(update_user)
-    return update_user
+    db.refresh(verified_staff)
+    return verified_staff
 
 @router.delete("/{staff_id}", response_model=user.UserResponse)
 def get_user(

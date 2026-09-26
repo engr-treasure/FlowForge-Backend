@@ -1,7 +1,8 @@
-from pydantic import BaseModel, field_validator, Field, model_validator, ConfigDict
+from pydantic import BaseModel, field_validator, Field, model_validator, ConfigDict, EmailStr
+from datetime import date
+from datetime import datetime
 import re
 from app.core import enums
-from datetime import date
 from app.schemas.company import JobResponse, DepartmentResponse
 
 class Register(BaseModel):
@@ -14,7 +15,7 @@ class Register(BaseModel):
         min_length=2,
         max_length=30
     )
-    email: str | None = None
+    email: EmailStr | None = None
     phone_number: str
     street_address: str = Field(
         max_length=200
@@ -33,15 +34,10 @@ class Register(BaseModel):
         description="Date the staff member joined the company"
     )
 
-    @field_validator("first_name")
+    @field_validator("first_name", "last_name")
     @classmethod
     def clean_first_name(cls, value):
-        return value.strip()
-    
-    @field_validator("last_name")
-    @classmethod
-    def clean_last_name(cls, value):
-        return value.strip()
+        return value.strip().title()
 
     @field_validator("email")
     @classmethod
@@ -129,7 +125,28 @@ class UpdateUser(BaseModel):
     )
     employment_status: enums.EmploymentStatus | None
 
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def clean_first_name(cls, value):
+        return value.strip().title()
 
+    @field_validator("email")
+    @classmethod
+    def clean_email(cls, value):
+        if value is None:
+            return value
+        return value.lower().strip()
+
+    @field_validator("phone_number")
+    @classmethod
+    def validate_phone_number(cls, value) -> str:
+        value = re.sub(r"[\s\-()]+", "", value) #value.replace(" ", "").replace("-", "")
+        nigerian_phone_regex = r"^(\+234|234|0)[789][01]\d{8}$"
+        if not re.match(nigerian_phone_regex, value):
+            raise ValueError(
+                "Invalid phone number"
+            )       
+        return value
 
 class UserResponse(BaseModel):
     id: int
@@ -140,5 +157,12 @@ class UserResponse(BaseModel):
     phone_number: str
     join_date: date
     job: JobResponse
+    last_login: datetime
     model_config=ConfigDict(from_attributes=True)
 
+class UserListResponse(BaseModel):
+    items: list[UserResponse]
+    page: int
+    limit: int
+    total: int
+    pages: int

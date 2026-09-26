@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
-from app.databases.database import get_db
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from app.databases.database import get_db
 from app.schemas import company
 from app.models.user import Users
 from app.models.company import Jobs, OfficeLocations, Departments
 from app.dependencies import permissions, company_dependencies
 from app.core import enums
+import math
 
 router = APIRouter(
     prefix="/company",
@@ -16,7 +17,8 @@ router = APIRouter(
 def AddJob(
     job: company.AddJob,
     db: Session = Depends(get_db),
-    _: Users = Depends(permissions.require_admin)
+    _: Users = Depends(permissions.require_admin),
+    __: Users = Depends(permissions.allow_active_staff)
 ):
     job_exists = db.query(Jobs).filter_by(title=job.title).first()
 
@@ -42,16 +44,21 @@ def AddJob(
     db.refresh(new_job)
     return new_job
 
-@router.get("/jobs", response_model=list[company.JobResponse])
+@router.get("/jobs", response_model=company.JobListResponse)
 def get_jobs(
+    page: int = Query(1, ge=1),
+    limit:int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     allowed_user: Users = Depends(permissions.require_admin_or_manager),
     __: Users = Depends(permissions.allow_active_staff)
 ):
+    total = db.query(Jobs).count()
+    pages = math.ceil(total / pages)
+    offset = (page - 1) * limit
     if allowed_user.role == enums.Roles.ADMIN:
-        jobs = db.query(Jobs).all()
+        jobs = db.query(Jobs).order_by(Jobs.department_id.desc()).offset(offset).limit(limit).all()
     else:
-        jobs = db.query(Jobs).filter(Jobs.department_id==allowed_user.job.department_id).all()
+        jobs = db.query(Jobs).order_by(Jobs.department_id.desc()).filter(Jobs.department_id==allowed_user.job.department_id).all()
         # We use join() when constructing a database query that needs information from related tables. 
         # allowed_job is already a SQLAlchemy jobs instance, so we can navigate its relationships directly.
     return jobs
@@ -59,7 +66,7 @@ def get_jobs(
 
 @router.get("/jobs/{id}", response_model=company.JobResponse)
 def get_job_by_id(
-    job: Users = Depends(company_dependencies.get_job_by_id),
+    job: Jobs = Depends(company_dependencies.get_job_by_id),
     _: Users = Depends(permissions.require_admin_or_manager),
     __: Users = Depends(permissions.allow_active_staff)
 ):
@@ -68,22 +75,22 @@ def get_job_by_id(
 @router.patch("/jobs/{id}", response_model=company.JobResponse)
 def update_job(
     update_details: company.UpdateJob,
-    verified_job: Users = Depends(company_dependencies.get_job_by_id),
+    verified_job: Jobs = Depends(company_dependencies.get_job_by_id),
     db: Session = Depends(get_db),
     _: Users = Depends(permissions.require_admin),
     __: Users = Depends(permissions.allow_active_staff)
 ):
-    update_job = update_details.model_dump(exclude_unset=True)
-    for key, value in update_job.items():
+    updated = update_details.model_dump(exclude_unset=True)
+    for key, value in updated.items():
         setattr(verified_job, key, value)
 
     db.commit()
-    db.refresh(update_job)
-    return update_job
+    db.refresh(verified_job)
+    return verified_job
 
 @router.delete("/jobs/{id}", response_model=company.JobResponse)
 def get_job(
-    job: Users = Depends(company_dependencies.get_job_by_id),
+    job: Jobs = Depends(company_dependencies.get_job_by_id),
     db: Session = Depends(get_db),
     _: Users = Depends(permissions.require_admin),
     __: Users = Depends(permissions.allow_active_staff)
@@ -147,13 +154,13 @@ def update_department(
     _: Users = Depends(permissions.require_admin),
     __: Users = Depends(permissions.allow_active_staff)
 ):
-    update_department = update_details.model_dump(exclude_unset=True)
-    for key, value in update_department.items():
+    updated = update_details.model_dump(exclude_unset=True)
+    for key, value in updated.items():
         setattr(verified_department, key, value)
 
     db.commit()
-    db.refresh(update_department)
-    return update_department
+    db.refresh(verified_department)
+    return verified_department
 
 @router.delete("/departments/{id}", response_model=company.DepartmentResponse)
 def delete_department(
@@ -222,8 +229,8 @@ def update_office_location(
         setattr(verified_location, key, value)
 
     db.commit()
-    db.refresh(update_location)
-    return update_location
+    db.refresh(verified_location)
+    return verified_location
 
 @router.delete("/locations/{id}", response_model=company.OfficeLocationResponse)
 def delete_office_location(

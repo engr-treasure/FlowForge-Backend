@@ -1,7 +1,7 @@
-from app.core.security import decode_access_token
 from fastapi import HTTPException, Depends, security
-from app.databases.database import get_db
 from sqlalchemy.orm import Session
+from app.core.security import decode_access_token
+from app.databases.database import get_db
 from app.models import user
 
 auth2_scheme = security.OAuth2PasswordBearer(tokenUrl="users/login")

@@ -1,9 +1,9 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from app.databases.database import Base
-from app.core import enums
 from enum import Enum
 from datetime import date
+from app.databases.database import Base
+from app.core import enums
 
 class Jobs(Base):
     __tablename__ = "jobs"
@@ -50,5 +50,9 @@ class OfficeLocations(Base):
     country = Column(String, nullable=False)
     departments = relationship(
         "Departments",
+        back_populates="location"
+    )
+    equipments = relationship(
+        "Equipments",
         back_populates="location"
     )

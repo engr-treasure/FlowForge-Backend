@@ -12,7 +12,7 @@ def get_job_by_id(
     if not job:
         raise HTTPException(
             status_code=404,
-            detail="Staff does not exist"
+            detail="Job does not exist"
         )
     return job
 
@@ -24,7 +24,7 @@ def get_department_by_id(
     if not department:
         raise HTTPException(
             status_code=404,
-            detail="Staff does not exist"
+            detail="Department does not exist"
         )
     return department
 
@@ -36,6 +36,6 @@ def get_location_by_id(
     if not location:
         raise HTTPException(
             status_code=404,
-            detail="Staff does not exist"
+            detail="Location does not exist"
         )
     return location
